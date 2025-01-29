@@ -19,7 +19,7 @@ This is a **Flutter** web application that allows users to calculate financing o
 ## Getting Started
 
 ### Ensure you have
-- Flutter 3.x+ installed (Download Flutter)
+- Flutter 3.x+ installed
 - Dart SDK
 - Chrome Browser for Web Execution
 
