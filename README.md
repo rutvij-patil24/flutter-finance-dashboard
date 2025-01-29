@@ -25,8 +25,8 @@ This is a **Flutter** web application that allows users to calculate financing o
 
 ### Steps to run the app locally
 ```sh
-git clone https://github.com/rutvij-patil24/flutter-finance-app.git
-cd financing-options-app
+git clone https://github.com/rutvij-patil24/take_home_assignment_ned.git
+cd take_home_assignment_ned
 flutter pub get
 flutter run -d chrome
 
