@@ -1,43 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'finance_screen.dart';
+import 'finance_controller.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Take Home Assignment',
-      theme: ThemeData(
-        textTheme: GoogleFonts.robotoTextTheme(),
-      ),
-      home: const FinanceScreen(),
-    );
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*** 
 class FinanceScreen extends StatefulWidget {
   const FinanceScreen({Key? key}) : super(key: key);
 
@@ -46,114 +9,14 @@ class FinanceScreen extends StatefulWidget {
 }
 
 class _FinanceScreenState extends State<FinanceScreen> {
-  Map<String, dynamic>? config;
-  bool isLoading = true;
-  final TextEditingController revenueController = TextEditingController();
-  final TextEditingController loanAmountController = TextEditingController();
-  double loanAmount = 0.0;
-  String repaymentDelay = '30 days';
-  String repaymentFrequency = '';
-  double revenueSharePercentage = 0.0;
-  final List<Map<String, dynamic>> fundsUsage = [];
-  double feePercentage = 0.0;
-  List<String> repaymentFrequencyOptions = [];
+  final FinanceController controller = FinanceController();
 
   @override
   void initState() {
     super.initState();
-    fetchConfig();
-  }
-
-  Future<void> fetchConfig() async {
-    const url =
-        'https://gist.githubusercontent.com/motgi/8fc373cbfccee534c820875ba20ae7b5/raw/7143758ff2caa773e651dc3576de57cc829339c0/config.json';
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      setState(() {
-        config = Map.fromEntries(
-          (json.decode(response.body) as List<dynamic>).map(
-            (e) => MapEntry(e['name'], e),
-          ),
-        );
-        isLoading = false;
-        revenueController.text =
-            config?['revenue_amount']?['placeholder']?.replaceAll(r'$', '') ??
-                '0';
-        loanAmount =
-            double.parse(revenueController.text.replaceAll(',', '')) / 3;
-        revenueSharePercentage = calculateRevenueShare();
-        feePercentage = double.tryParse(
-                config?['desired_fee_percentage']?['value'] ?? '0.0') ??
-            0.0;
-        String frequencyValue =
-            config?['revenue_shared_frequency']?['value'] ?? "";
-        repaymentFrequencyOptions = frequencyValue.split("*");
-        repaymentFrequency = repaymentFrequencyOptions.isNotEmpty
-            ? repaymentFrequencyOptions[0]
-            : "";
-      });
-    } else {
-      throw Exception('Failed to load configuration');
-    }
-  }
-
-  double calculateRevenueShare() {
-    double revenueMin =
-        double.tryParse(config?['revenue_percentage_min']?['value'] ?? '0') ??
-            0.0;
-    double revenueMax =
-        double.tryParse(config?['revenue_percentage_max']?['value'] ?? '0') ??
-            0.0;
-    double revenueAmount =
-        double.tryParse(revenueController.text.replaceAll(',', '')) ?? 1.0;
-    double percent = (0.156 / 6.2055 / revenueAmount) * (loanAmount * 10);
-    if (percent * 100 < revenueMin) {
-      percent = revenueMin;
-    } else if (percent * 100 > revenueMax) {
-      percent = revenueMax;
-    }
-    return percent;
-  }
-
-  double calculateFees() {
-    return loanAmount * feePercentage;
-  }
-
-  int calculateExpectedTransfers() {
-    double revenueAmount =
-        double.tryParse(revenueController.text.replaceAll(',', '')) ?? 1.0;
-    if (revenueAmount <= 0 || revenueSharePercentage <= 0) {
-      return 0;
-    }
-    double totalRevenueShare = loanAmount + (loanAmount * feePercentage);
-    double frequencyFactor =
-        repaymentFrequency.toLowerCase() == 'weekly' ? 52 : 12;
-
-    double r1 = (totalRevenueShare * frequencyFactor);
-    double r2 = (revenueAmount * revenueSharePercentage);
-    double result = r1 / r2;
-    result = result * 100;
-    return result.ceil();
-  }
-
-  String calculateCompletionDate() {
-    int expectedTransfers = calculateExpectedTransfers();
-    DateTime now = DateTime.now();
-
-    Duration repaymentDelayDuration = Duration(
-      days: repaymentDelay.contains('30')
-          ? 30
-          : repaymentDelay.contains('60')
-              ? 60
-              : 90,
-    );
-    Duration totalDuration = repaymentFrequency == 'Weekly'
-        ? repaymentDelayDuration + Duration(days: expectedTransfers * 7)
-        : repaymentDelayDuration + Duration(days: expectedTransfers * 30);
-    DateTime completionDate = now.add(totalDuration);
-    String formattedDate = DateFormat('MMMM d, yyyy').format(completionDate);
-    return formattedDate;
+    controller.fetchConfig(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -177,9 +40,9 @@ class _FinanceScreenState extends State<FinanceScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: isLoading
+      body: controller.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : config == null
+          : controller.config == null
               ? const Center(child: Text('Failed to load configuration'))
               : Padding(
                   padding: EdgeInsets.all(screenWidth * 0.02),
@@ -230,22 +93,22 @@ class _FinanceScreenState extends State<FinanceScreen> {
               const Text('Financing options',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              _buildTextField(config?['revenue_amount']),
+              _buildTextField(controller.config?['revenue_amount']),
               const SizedBox(height: 16),
-              _buildSlider(config?['funding_amount']),
+              _buildSlider(controller.config?['funding_amount']),
               const SizedBox(height: 16),
               RichText(
                 text: TextSpan(
                   children: [
                     TextSpan(
-                      text: config?['revenue_percentage']?['label'] ?? '',
+                      text: controller.config?['revenue_percentage']?['label'] ?? '',
                       style: const TextStyle(fontSize: 16, color: Colors.black),
                     ),
                     const WidgetSpan(
                       child: SizedBox(width: 8),
                     ),
                     TextSpan(
-                      text: '${revenueSharePercentage.toStringAsFixed(2)}%',
+                      text: '${controller.revenueSharePercentage.toStringAsFixed(2)}%',
                       style: const TextStyle(
                         fontSize: 16,
                         color: Color(0xFF0E7CF4),
@@ -256,14 +119,14 @@ class _FinanceScreenState extends State<FinanceScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildRadioButtons(config?['revenue_shared_frequency']),
+              _buildRadioButtons(controller.config?['revenue_shared_frequency']),
               const SizedBox(height: 16),
-              _buildDropdown(config?['desired_repayment_delay']),
+              _buildDropdown(controller.config?['desired_repayment_delay']),
               const SizedBox(height: 16),
               Flexible(
                 fit: FlexFit.loose,
                 child: SingleChildScrollView(
-                  child: _buildFundsUsage(config?['use_of_funds'], isMobile),
+                  child: _buildFundsUsage(controller.config?['use_of_funds'], isMobile),
                 ),
               ),
             ],
@@ -288,20 +151,20 @@ class _FinanceScreenState extends State<FinanceScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               _buildResultRow(
-                  'Annual Business Revenue', '\$${revenueController.text}'),
+                  'Annual Business Revenue', '\$${controller.revenueController.text}'),
               _buildResultRow(
-                  'Funding Amount', '\$${loanAmount.toStringAsFixed(0)}'),
+                  'Funding Amount', '\$${controller.loanAmount.toStringAsFixed(0)}'),
               _buildResultRow('Fees',
-                  '(${(feePercentage * 100).toStringAsFixed(0)}%) \$${calculateFees().toStringAsFixed(0)}'),
+                  '(${(controller.feePercentage * 100).toStringAsFixed(0)}%) \$${controller.calculateFees().toStringAsFixed(0)}'),
               Divider(
                   color: Colors.grey[300],
                   thickness: 1,
                   indent: 16,
                   endIndent: 16),
               _buildResultRow('Total Revenue Share',
-                  '\$${(loanAmount + (loanAmount * feePercentage)).toStringAsFixed(0)}'),
+                  '\$${(controller.loanAmount + (controller.loanAmount * controller.feePercentage)).toStringAsFixed(0)}'),
               _buildResultRow(
-                  'Expected Transfers', '${calculateExpectedTransfers()}'),
+                  'Expected Transfers', '${controller.calculateExpectedTransfers()}'),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -311,7 +174,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                           fontWeight: FontWeight.bold,
                           color: Colors.black)),
                   Text(
-                    calculateCompletionDate(),
+                    controller.calculateCompletionDate(),
                     style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -385,7 +248,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(config?['use_of_funds']?['label'] ?? '',
+        Text(controller.config?['use_of_funds']?['label'] ?? '',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Row(
@@ -476,7 +339,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       double.tryParse(amountText.replaceAll(',', ''));
                   if (amount != null && amount > 0) {
                     setState(() {
-                      fundsUsage.insert(0, {
+                      controller.fundsUsage.insert(0, {
                         'type': selectedCategory,
                         'description': description,
                         'amount': amount,
@@ -493,7 +356,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         ),
         const SizedBox(height: 8),
         Column(
-          children: fundsUsage.map((fund) {
+          children: controller.fundsUsage.map((fund) {
             return Container(
               margin: const EdgeInsets.only(bottom: 8.0),
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -529,7 +392,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                     icon: const Icon(Icons.delete, color: Colors.red),
                     onPressed: () {
                       setState(() {
-                        fundsUsage.remove(fund);
+                        controller.fundsUsage.remove(fund);
                       });
                     },
                   ),
@@ -549,7 +412,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         Text(fieldConfig?['label'] ?? '', style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 8),
         TextField(
-          controller: revenueController,
+          controller: controller.revenueController,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
@@ -566,16 +429,16 @@ class _FinanceScreenState extends State<FinanceScreen> {
             setState(() {
               double? revenue = double.tryParse(sanitizedValue);
               if (revenue == null || revenue < 75000) {
-                revenueController.text = '75000';
-                revenueController.selection = TextSelection.fromPosition(
+                controller.revenueController.text = '75000';
+                controller.revenueController.selection = TextSelection.fromPosition(
                   const TextPosition(offset: 5),
                 );
                 revenue = 75000;
               }
-              loanAmount = revenue / 3;
-              revenueSharePercentage = calculateRevenueShare() * 100;
-              if (revenueSharePercentage > 100) {
-                revenueSharePercentage = revenueSharePercentage / 100;
+              controller.loanAmount = revenue / 3;
+              controller.revenueSharePercentage = controller.calculateRevenueShare() * 100;
+              if (controller.revenueSharePercentage > 100) {
+                controller.revenueSharePercentage = controller.revenueSharePercentage / 100;
               }
             });
           },
@@ -586,15 +449,15 @@ class _FinanceScreenState extends State<FinanceScreen> {
 
   Widget _buildSlider(Map<String, dynamic>? fieldConfig) {
     double fundingMin =
-        double.tryParse(config?['funding_amount_min']?['value'] ?? '0') ?? 0;
+        double.tryParse(controller.config?['funding_amount_min']?['value'] ?? '0') ?? 0;
     double fundingMax =
-        double.tryParse(config?['funding_amount_max']?['value'] ?? '0') ?? 0;
+        double.tryParse(controller.config?['funding_amount_max']?['value'] ?? '0') ?? 0;
     double revenueAmount =
-        double.tryParse(revenueController.text.replaceAll(',', '')) ?? 0;
+        double.tryParse(controller.revenueController.text.replaceAll(',', '')) ?? 0;
     double maxAllowed = revenueAmount / 3;
     double maxAmount = maxAllowed < fundingMax ? maxAllowed : fundingMax;
-    if (loanAmount < fundingMin) loanAmount = fundingMin;
-    if (loanAmount > maxAmount) loanAmount = maxAmount;
+    if (controller.loanAmount < fundingMin) controller.loanAmount = fundingMin;
+    if (controller.loanAmount > maxAmount) controller.loanAmount = maxAmount;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -604,7 +467,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
             Expanded(
               flex: 2,
               child: Text(
-                '\$${loanAmount.toStringAsFixed(0)}',
+                '\$${controller.loanAmount.toStringAsFixed(0)}',
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
@@ -625,18 +488,18 @@ class _FinanceScreenState extends State<FinanceScreen> {
             Expanded(
               flex: 6,
               child: Slider(
-                value: loanAmount,
+                value: controller.loanAmount,
                 min: fundingMin,
                 max: maxAmount,
                 activeColor: const Color(0xFF0E7CF4),
                 onChanged: (value) {
                   setState(() {
-                    loanAmount = value;
-                    revenueSharePercentage = calculateRevenueShare() * 100;
-                    if (revenueSharePercentage > 100) {
-                      revenueSharePercentage = revenueSharePercentage / 100;
+                    controller.loanAmount = value;
+                    controller.revenueSharePercentage = controller.calculateRevenueShare() * 100;
+                    if (controller.revenueSharePercentage > 100) {
+                      controller.revenueSharePercentage = controller.revenueSharePercentage / 100;
                     }
-                    calculateExpectedTransfers();
+                    controller.calculateExpectedTransfers();
                   });
                 },
               ),
@@ -646,7 +509,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               flex: 2,
               child: TextField(
                 keyboardType: TextInputType.number,
-                controller: loanAmountController,
+                controller: controller.loanAmountController,
                 decoration: InputDecoration(
                   border: const OutlineInputBorder(),
                   focusedBorder: OutlineInputBorder(
@@ -655,22 +518,22 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       color: Color(0xFF0E7CF4),
                     ),
                   ),
-                  hintText: loanAmount.toStringAsFixed(0),
+                  hintText: controller.loanAmount.toStringAsFixed(0),
                 ),
                 onChanged: (value) {
                   String sanitizedValue =
                       value.replaceAll(RegExp(r'[^0-9]'), '');
                   setState(() {
-                    loanAmountController.text = sanitizedValue;
-                    loanAmountController.selection = TextSelection.fromPosition(
+                    controller.loanAmountController.text = sanitizedValue;
+                    controller.loanAmountController.selection = TextSelection.fromPosition(
                       TextPosition(offset: sanitizedValue.length),
                     );
                     double? inputValue = double.tryParse(sanitizedValue);
                     if (inputValue != null &&
                         inputValue >= 1000 &&
                         inputValue <= maxAmount) {
-                      loanAmount = inputValue;
-                      revenueSharePercentage = calculateRevenueShare() * 100;
+                      controller.loanAmount = inputValue;
+                      controller.revenueSharePercentage = controller.calculateRevenueShare() * 100;
                     }
                   });
                 },
@@ -689,16 +552,16 @@ class _FinanceScreenState extends State<FinanceScreen> {
         Text(fieldConfig?['label'] ?? '', style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 8),
         ...options.map((option) {
-          bool isSelected = (option == repaymentFrequency);
+          bool isSelected = (option == controller.repaymentFrequency);
           return Row(
             children: [
               Radio<String>(
                 value: option,
-                groupValue: repaymentFrequency,
+                groupValue: controller.repaymentFrequency,
                 activeColor: const Color(0xFF0E7CF4),
                 onChanged: (value) {
                   setState(() {
-                    repaymentFrequency = value!;
+                    controller.repaymentFrequency = value!;
                   });
                 },
               ),
@@ -723,7 +586,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
         Text(fieldConfig?['label'] ?? '', style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 10),
         DropdownButton<String>(
-          value: repaymentDelay,
+          value: controller.repaymentDelay,
           dropdownColor: Colors.white,
           items: options
               .map((e) => DropdownMenuItem(
@@ -732,7 +595,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
                       e,
                       style: TextStyle(
                         fontSize: 16,
-                        color: e == repaymentDelay
+                        color: e == controller.repaymentDelay
                             ? const Color(0xFF0E7CF4)
                             : Colors.black,
                       ),
@@ -741,7 +604,7 @@ class _FinanceScreenState extends State<FinanceScreen> {
               .toList(),
           onChanged: (value) {
             setState(() {
-              repaymentDelay = value!;
+              controller.repaymentDelay = value!;
             });
           },
         ),
@@ -765,5 +628,5 @@ class _FinanceScreenState extends State<FinanceScreen> {
       ),
     );
   }
+
 }
-***/
