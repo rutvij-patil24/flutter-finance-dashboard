@@ -1,4 +1,4 @@
-# Flutter Finance App
+# Flutter Finance Application Dashboard
 
 This is a **Flutter** web application that allows users to calculate financing options dynamically based on API configurations. Users can input business revenue, select loan amounts, and adjust repayment terms while seeing real-time financial calculations.
 
@@ -25,8 +25,8 @@ This is a **Flutter** web application that allows users to calculate financing o
 
 ### Steps to run the app locally
 ```sh
-git clone https://github.com/rutvij-patil24/take_home_assignment_ned.git
-cd take_home_assignment_ned
+git clone https://github.com/rutvij-patil24/flutter-finance-dashboard.git
+cd flutter-finance-dashboard
 flutter pub get
 flutter run -d chrome
 
